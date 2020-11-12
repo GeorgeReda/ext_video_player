@@ -13,7 +13,8 @@ import 'package:flutter/material.dart';
 import 'package:meta/meta.dart';
 
 import 'package:video_player_platform_interface/video_player_platform_interface.dart';
-export 'package:video_player_platform_interface/video_player_platform_interface.dart' show DurationRange, DataSourceType, VideoFormat;
+export 'package:video_player_platform_interface/video_player_platform_interface.dart'
+    show DurationRange, DataSourceType, VideoFormat;
 
 import 'src/closed_caption_file.dart';
 export 'src/closed_caption_file.dart';
@@ -48,6 +49,7 @@ class VideoPlayerValue {
     this.isLooping = false,
     this.isBuffering = false,
     this.volume = 1.0,
+    this.playbackSpeed = 1.0,
     this.errorDescription,
   });
 
@@ -56,7 +58,8 @@ class VideoPlayerValue {
 
   /// Returns an instance with a `null` [Duration] and the given
   /// [errorDescription].
-  VideoPlayerValue.erroneous(String errorDescription) : this(duration: null, errorDescription: errorDescription);
+  VideoPlayerValue.erroneous(String errorDescription)
+      : this(duration: null, errorDescription: errorDescription);
 
   /// The total duration of the video.
   ///
@@ -104,6 +107,9 @@ class VideoPlayerValue {
   /// [errorDescription] should have information about the problem.
   bool get hasError => errorDescription != null;
 
+  /// The current speed of the playback.
+  final double playbackSpeed;
+
   /// Returns [size.width] / [size.height] when size is non-null, or `1.0.` when
   /// size is null or the aspect ratio would be less than or equal to 0.0.
   double get aspectRatio {
@@ -129,6 +135,7 @@ class VideoPlayerValue {
     bool isLooping,
     bool isBuffering,
     double volume,
+    double playbackSpeed,
     String errorDescription,
   }) {
     return VideoPlayerValue(
@@ -141,6 +148,7 @@ class VideoPlayerValue {
       isLooping: isLooping ?? this.isLooping,
       isBuffering: isBuffering ?? this.isBuffering,
       volume: volume ?? this.volume,
+      playbackSpeed: playbackSpeed ?? this.playbackSpeed,
       errorDescription: errorDescription ?? this.errorDescription,
     );
   }
@@ -157,6 +165,7 @@ class VideoPlayerValue {
         'isLooping: $isLooping, '
         'isBuffering: $isBuffering'
         'volume: $volume, '
+        'playbackSpeed: $playbackSpeed, '
         'errorDescription: $errorDescription)';
   }
 }
@@ -177,7 +186,8 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
   /// The name of the asset is given by the [dataSource] argument and must not be
   /// null. The [package] argument must be non-null when the asset comes from a
   /// package and null otherwise.
-  VideoPlayerController.asset(this.dataSource, {this.package, this.closedCaptionFile})
+  VideoPlayerController.asset(this.dataSource,
+      {this.package, this.closedCaptionFile})
       : dataSourceType = DataSourceType.asset,
         formatHint = null,
         super(VideoPlayerValue(duration: null));
@@ -189,7 +199,8 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
   /// null.
   /// **Android only**: The [formatHint] option allows the caller to override
   /// the video format detection code.
-  VideoPlayerController.network(this.dataSource, {this.formatHint, this.closedCaptionFile})
+  VideoPlayerController.network(this.dataSource,
+      {this.formatHint, this.closedCaptionFile})
       : dataSourceType = DataSourceType.network,
         package = null,
         super(VideoPlayerValue(duration: null));
@@ -256,9 +267,11 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
         String _videoId = _getIdFromUrl(dataSource);
         String _fetchUrl = "";
         if (kIsWeb) {
-          _fetchUrl = "https://youtubevideodownloadurls.netlify.app/.netlify/functions/server?vid=$_videoId";
+          _fetchUrl =
+              "https://youtubevideodownloadurls.netlify.app/.netlify/functions/server?vid=$_videoId";
         } else {
-          _fetchUrl = "https://www.youtube.com/get_video_info?&video_id=$_videoId";
+          _fetchUrl =
+              "https://www.youtube.com/get_video_info?&video_id=$_videoId";
         }
         var response = await http.get(_fetchUrl);
 
@@ -273,13 +286,17 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
         String newUrl = videoUrls[quality.toString().split('.').last];
 
         if (newUrl == null) {
-          for (int i = quality.index + 1; i < VideoYoutubeQuality.values.length; i++) {
-            newUrl = videoUrls[VideoYoutubeQuality.values[i].toString().split('.').last];
+          for (int i = quality.index + 1;
+              i < VideoYoutubeQuality.values.length;
+              i++) {
+            newUrl = videoUrls[
+                VideoYoutubeQuality.values[i].toString().split('.').last];
           }
         }
         if (newUrl == null) {
           for (int i = quality.index - 1; i >= 0; i--) {
-            newUrl = videoUrls[VideoYoutubeQuality.values[i].toString().split('.').last];
+            newUrl = videoUrls[
+                VideoYoutubeQuality.values[i].toString().split('.').last];
           }
         }
         if (newUrl != null) finalYoutubeUrl = newUrl;
@@ -363,15 +380,19 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
       }
     }
 
-    _eventSubscription = _videoPlayerPlatform.videoEventsFor(_textureId).listen(eventListener, onError: errorListener);
+    _eventSubscription = _videoPlayerPlatform
+        .videoEventsFor(_textureId)
+        .listen(eventListener, onError: errorListener);
     return initializingCompleter.future;
   }
 
   /// To Get VideoId from Url
   static String _getIdFromUrl(String url, [bool trimWhitespaces = true]) {
     List<RegExp> _regexps = [
-      RegExp(r'^https:\/\/(?:www\.|m\.)?youtube\.com\/watch\?v=([_\-a-zA-Z0-9]{11}).*$'),
-      RegExp(r'^https:\/\/(?:www\.|m\.)?youtube(?:-nocookie)?\.com\/embed\/([_\-a-zA-Z0-9]{11}).*$'),
+      RegExp(
+          r'^https:\/\/(?:www\.|m\.)?youtube\.com\/watch\?v=([_\-a-zA-Z0-9]{11}).*$'),
+      RegExp(
+          r'^https:\/\/(?:www\.|m\.)?youtube(?:-nocookie)?\.com\/embed\/([_\-a-zA-Z0-9]{11}).*$'),
       RegExp(r'^https:\/\/youtu\.be\/([_\-a-zA-Z0-9]{11}).*$')
     ];
 
@@ -458,6 +479,10 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
           _updatePosition(newPosition);
         },
       );
+      // This ensures that the correct playback speed is always applied when
+      // playing back. This is necessary because we do not set playback speed
+      // when paused.
+      await _applyPlaybackSpeed();
     } else {
       _timer?.cancel();
       await _videoPlayerPlatform.pause(_textureId);
@@ -469,6 +494,22 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
       return;
     }
     await _videoPlayerPlatform.setVolume(_textureId, value.volume);
+  }
+
+  Future<void> _applyPlaybackSpeed() async {
+    if (!value.initialized || _isDisposed) {
+      return;
+    }
+
+    // Setting the playback speed on iOS will trigger the video to play. We
+    // prevent this from happening by not applying the playback speed until
+    // the video is manually played from Flutter.
+    if (!value.isPlaying) return;
+
+    await _videoPlayerPlatform.setPlaybackSpeed(
+      _textureId,
+      value.playbackSpeed,
+    );
   }
 
   /// The position in the current video.
@@ -506,6 +547,39 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
     await _applyVolume();
   }
 
+ /// Sets the playback speed of [this].
+  ///
+  /// [speed] indicates a speed value with different platforms accepting
+  /// different ranges for speed values. The [speed] must be greater than 0.
+  ///
+  /// The values will be handled as follows:
+  /// * On web, the audio will be muted at some speed when the browser
+  ///   determines that the sound would not be useful anymore. For example,
+  ///   "Gecko mutes the sound outside the range `0.25` to `5.0`" (see https://developer.mozilla.org/en-US/docs/Web/API/HTMLMediaElement/playbackRate).
+  /// * On Android, some very extreme speeds will not be played back accurately.
+  ///   Instead, your video will still be played back, but the speed will be
+  ///   clamped by ExoPlayer (but the values are allowed by the player, like on
+  ///   web).
+  /// * On iOS, you can sometimes not go above `2.0` playback speed on a video.
+  ///   An error will be thrown for if the option is unsupported. It is also
+  ///   possible that your specific video cannot be slowed down, in which case
+  ///   the plugin also reports errors.
+  Future<void> setPlaybackSpeed(double speed) async {
+    if (speed < 0) {
+      throw ArgumentError.value(
+        speed,
+        'Negative playback speeds are generally unsupported.',
+      );
+    } else if (speed == 0) {
+      throw ArgumentError.value(
+        speed,
+        'Zero playback speed is generally unsupported. Consider using [pause].',
+      );
+    }
+
+    value = value.copyWith(playbackSpeed: speed);
+    await _applyPlaybackSpeed();
+  }
   /// The closed caption based on the current [position] in the video.
   ///
   /// If there are no closed captions at the current [position], this will
@@ -618,7 +692,9 @@ class _VideoPlayerState extends State<VideoPlayer> {
 
   @override
   Widget build(BuildContext context) {
-    return _textureId == null ? Container() : _videoPlayerPlatform.buildView(_textureId);
+    return _textureId == null
+        ? Container()
+        : _videoPlayerPlatform.buildView(_textureId);
   }
 }
 
@@ -947,10 +1023,13 @@ class CustomLinearProgressIndicator extends ProgressIndicator {
   final double bubbleRadius;
 
   @override
-  _CustomLinearProgressIndicatorState createState() => _CustomLinearProgressIndicatorState();
+  _CustomLinearProgressIndicatorState createState() =>
+      _CustomLinearProgressIndicatorState();
 }
 
-class _CustomLinearProgressIndicatorState extends State<CustomLinearProgressIndicator> with SingleTickerProviderStateMixin {
+class _CustomLinearProgressIndicatorState
+    extends State<CustomLinearProgressIndicator>
+    with SingleTickerProviderStateMixin {
   AnimationController _controller;
 
   @override
@@ -968,7 +1047,8 @@ class _CustomLinearProgressIndicatorState extends State<CustomLinearProgressIndi
     super.didUpdateWidget(oldWidget);
     if (widget.value == null && !_controller.isAnimating)
       _controller.repeat();
-    else if (widget.value != null && _controller.isAnimating) _controller.stop();
+    else if (widget.value != null && _controller.isAnimating)
+      _controller.stop();
   }
 
   @override
@@ -977,7 +1057,8 @@ class _CustomLinearProgressIndicatorState extends State<CustomLinearProgressIndi
     super.dispose();
   }
 
-  Widget _buildIndicator(BuildContext context, double animationValue, TextDirection textDirection) {
+  Widget _buildIndicator(BuildContext context, double animationValue,
+      TextDirection textDirection) {
     return Container(
       constraints: BoxConstraints(
         minWidth: double.infinity,
@@ -985,7 +1066,8 @@ class _CustomLinearProgressIndicatorState extends State<CustomLinearProgressIndi
       ),
       child: CustomPaint(
         painter: _LinearProgressIndicatorPainter(
-          backgroundColor: widget.backgroundColor ?? Theme.of(context).backgroundColor,
+          backgroundColor:
+              widget.backgroundColor ?? Theme.of(context).backgroundColor,
           valueColor: widget.valueColor?.value ?? Theme.of(context).accentColor,
           value: widget.value, // may be null
           animationValue: animationValue, // ignored if widget.value is not null
@@ -1000,7 +1082,8 @@ class _CustomLinearProgressIndicatorState extends State<CustomLinearProgressIndi
   Widget build(BuildContext context) {
     final TextDirection textDirection = Directionality.of(context);
 
-    if (widget.value != null) return _buildIndicator(context, _controller.value, textDirection);
+    if (widget.value != null)
+      return _buildIndicator(context, _controller.value, textDirection);
 
     return AnimatedBuilder(
       animation: _controller.view,
@@ -1101,10 +1184,12 @@ class _LinearProgressIndicatorPainter extends CustomPainter {
       drawIndicator(0.0, value.clamp(0.0, 1.0) * size.width as double);
     } else {
       final double x1 = size.width * line1Tail.transform(animationValue);
-      final double width1 = size.width * line1Head.transform(animationValue) - x1;
+      final double width1 =
+          size.width * line1Head.transform(animationValue) - x1;
 
       final double x2 = size.width * line2Tail.transform(animationValue);
-      final double width2 = size.width * line2Head.transform(animationValue) - x2;
+      final double width2 =
+          size.width * line2Head.transform(animationValue) - x2;
 
       drawBar(x1, width1);
       drawIndicator(x1, width1);
